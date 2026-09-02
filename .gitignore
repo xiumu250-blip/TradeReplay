@@ -1,0 +1,8 @@
+# 本地工作目录（记忆日志 / 数据备份等），不参与发布
+.workbuddy/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+*.log
+node_modules/

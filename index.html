@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K线复盘 · 交易模拟器</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ 顶栏 ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">K</span>
+      <div class="brand-text">
+        <div class="t1">K线复盘 · 交易模拟器</div>
+        <div class="t2" id="dataInfo">未载入数据</div>
+      </div>
+    </div>
+    <div class="period-box ds-box">
+      <span class="lbl">标的</span>
+      <select id="selDataset" title="切换内置数据集"></select>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="btn" id="btnSample">示例数据</button>
+      <label class="btn" for="fileInput">导入 CSV</label>
+      <input type="file" id="fileInput" accept=".csv,.txt,.tsv" hidden>
+      <button class="btn ghost" id="btnTemplate">CSV模板</button>
+      <button class="btn ghost" id="btnHelp">帮助</button>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ============ 图表区 ============ -->
+    <section class="chart-wrap" id="chartWrap">
+
+      <!-- 画线工具栏 -->
+      <div class="toolbar">
+        <div class="tool-group" id="toolGroup">
+          <button class="tool active" data-tool="select" title="选择 / 拖动画线">选择</button>
+          <button class="tool" data-tool="segment" title="线段：点击设起点，再次点击确认终点">线段</button>
+          <button class="tool" data-tool="ray" title="射线：点击设起点，再次点击确认方向">射线</button>
+          <button class="tool" data-tool="hline" title="水平线：点击一下即放置">水平线</button>
+          <button class="tool" data-tool="measure" title="测量：点击设起点，再次点击确认终点，显示区间K线根数与波动百分比">测量</button>
+          <button class="tool" data-tool="fib" title="斐波回撤：点击两次（起点→终点）">斐波回撤</button>
+          <button class="tool" data-tool="fibext" title="斐波扩展 AB=CD：点击 A、B、C 三次">斐波扩展</button>
+          <button class="tool" data-tool="text" title="文字标注：点击一下放置">文字</button>
+          <button class="tool" data-tool="arrowup" title="向上箭头：点击一下放置（看涨）">↑箭头</button>
+          <button class="tool" data-tool="arrowdown" title="向下箭头：点击一下放置（看跌）">↓箭头</button>
+          <button class="tool" data-tool="longpnl" title="做多盈亏：首击固定开仓+显示默认止盈/止损，右移预览，次击确认右边界；成图后止盈/止损线可自由拖动（调价+移右边界），开仓/左边界固定，虚线自动连到价位触发离场位置">做多盈亏</button>
+          <button class="tool" data-tool="shortpnl" title="做空盈亏：首击固定开仓+显示默认止盈/止损，右移预览，次击确认右边界；成图后止盈/止损线可自由拖动（调价+移右边界），开仓/左边界固定，虚线自动连到价位触发离场位置">做空盈亏</button>
+        </div>
+        <div class="divider"></div>
+        <div class="tool-group" id="colorGroup">
+          <input type="color" id="colorPick" class="color-pick" value="#f0a020" title="当前工具颜色（自由选色）">
+        </div>
+        <button class="tool" id="btnDash" title="当前画线工具线型：实线 / 虚线">实线</button>
+        <div class="divider"></div>
+        <div class="tool-group">
+          <button class="tool" id="btnDelDrawing" title="删除选中的画线 (Delete)">删除</button>
+          <button class="tool" id="btnClearDrawing" title="清空全部画线">清空</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="tool-group">
+          <label class="chk"><input type="checkbox" id="chkEMA" checked>EMA20<input type="color" id="emaColor" class="color-pick ema-pick" value="#ffd700" title="EMA20 颜色"></label>
+          <div class="period-box toolbar-period">
+            <span class="lbl">周期</span>
+            <select id="selPeriod" title="切换图表周期"></select>
+          </div>
+          <button class="tool" id="btnFullscreen" title="图表全屏 / 退出">全屏</button>
+        </div>
+        <div class="divider"></div>
+        <div class="tool-group" id="quickGroup">
+          <button class="tool" id="btnKeys" title="自定义快捷键">快捷键</button>
+        </div>
+      </div>
+
+      <!-- 回放控制条（顶部） -->
+      <div class="replay-bar">
+        <button class="rp" id="btnReset" title="回到起点">&#9198;</button>
+        <button class="rp primary" id="btnPlay" title="播放 / 暂停 (= 键)">&#9654;</button>
+        <button class="rp" id="btnNext" title="下一根 (空格，只前进不回退)">&#10074;&#9654;</button>
+        <div class="speeds" id="speeds">
+          <button data-speed="1" class="active">1x</button>
+          <button data-speed="2">2x</button>
+          <button data-speed="5">5x</button>
+          <button data-speed="10">10x</button>
+        </div>
+        <input type="range" id="progress" min="0" max="100" value="0">
+        <div class="rp-info" id="barInfo">--</div>
+        <div class="status" id="playStatus">就绪</div>
+        <div class="divider v"></div>
+        <button class="rp wide" id="btnRandom" title="随机跳到一个起点重新开始">&#127922; 随机起点</button>
+        <label class="mini" title="从指定日期开始播放">起始日期<input type="date" id="inpDate"></label>
+      </div>
+
+      <div class="canvas-host" id="canvasHost">
+        <canvas id="chart"></canvas>
+        <div class="legend" id="legend"></div>
+        <div class="drop-hint" id="dropHint">松开鼠标导入 CSV 文件</div>
+        <input id="drawTextInput" class="draw-text-input" hidden>
+        <div class="help-card" id="helpCard" hidden>
+          <h4>使用说明</h4>
+          <ol>
+            <li><b>数据与周期</b>：顶栏「标的」可在内置数据集间切换（BTCUSDT / XAU / ES500，默认 BTCUSDT，均为 5 分钟 K 线），切换即重新载入；也可「导入 CSV」或拖入文件。图表工具栏「周期」提供 初始周期、5分、1时、1天、1周（按基础周期自动换算，不足30根不显示），全屏时仍可切换。</li>
+            <li><b>回放</b>：<b>=</b> 播放/暂停，<b>空格</b> 播放下一根K线（<b>只前进不回退，不提供「上一根」</b>），顶部滑块可拖到任意位置（向回拖动自动回滚交易状态）。播放时自动跟随最新K线——仅在最新K线位于固定位置<b>右侧</b>时才回卷到固定位置，位于左侧则保持视口不动；手动平移后暂停跟随，再次播放恢复。「随机起点」随机跳转，「起始日期」从指定日期开始。</li>
+            <li><b>下单</b>：<b>图表右键</b> —— 在图表空白处右键只显示两个精简选项（不显示价格）：高于现价为「限价做空 / 突破做多」，低于现价为「限价做多 / 突破做空」，点击即在鼠标所指价格挂单（固定 1 手）；挂单为限价 / Stop 单，在后续K线触及价格时成交。右键点在已有挂单线上时只显示「撤销此挂单」，不再弹出下单项。</li>
+            <li><b>改单与止盈止损</b>：直接在图表上拖动 <span class="tag-amber">挂单</span> 横线改价；开仓后上下拖动 <span style="color:#6ea8ff;font-weight:600">蓝色开仓线</span>——拖到盈利一侧松手设<b>止盈</b>，亏损一侧设<b>止损</b>；也可在持仓卡片里填写。</li>
+            <li><b>历史成交记录</b>：右侧「历史」页签逐笔记录方向、开平仓价格/时间、盈亏，自动保存在浏览器本地，重新打开可查看；点击任意一笔可查看该笔交易的 K 线波段详情，并可添加文字备注。点击「跳到平仓处」回到该笔平仓时间后，主图表会在<b>进场点</b>（箭头）与<b>平仓点</b>（叉号）标注出来并用<b>连线</b>串起，直观回溯当时的进出场路径。</li>
+            <li><b>画线</b>：所有画线工具统一采用<b>两段式点击</b>交互——<b>第一次点击</b>设置起点并启动画线（可移动鼠标实时预览），<b>再次点击</b>确认并完成（单点工具如 水平线/箭头/文字 点击一下即放置；线段/射线/测量/斐波回撤 需两次点击；斐波扩展需 A、B、C 三次点击）。按住拖动<b>不</b>成图（仅预览），须在目标处干净地点击确认。按 <b>Esc</b> 或把指针移出图表即取消本次画线。<b>颜色</b>：工具栏色板自由选色（支持任意颜色），「实线/虚线」按钮切换线型，每个工具独立记忆并保存；向上/向下<b>箭头</b>为点击即放置的小实体标记（看涨/看跌）。<b>测量</b>：点击起点、再点击终点，形成<b>半透明矩形（虚线边缘）</b>，中央标注区间 K 线根数（含两端）与价格波动百分比（以起点为基准，上涨为 +、下跌为 -）；测量结果保留在图表上，可整体拖动或拖端点随时更新，<b>点击图表其他位置自动消失</b>。<b>做多盈亏 / 做空盈亏</b>：<b>首次点击</b>位置即固定为<b>开仓价</b>（紫色虚线）并确定矩形左边界，同时立即显示<b>默认止盈/止损</b>初始距离（做多：止盈在上/止损在下；做空：止盈在下/止损在上）；随后鼠标<b>向右移动</b>实时拉伸矩形预览，<b>再次点击</b>确认矩形右边界成图。确认后可<b>自由拖动止盈线（红）/ 止损线（绿）</b>：垂直拖动调整该线价位、水平拖动移动矩形右边界（右边界不会越过开仓列），<b>开仓线与左边界保持固定</b>；成图后自动检测<b>止盈/止损价位在区间内首次被K线触发（打到）的位置</b>作为<b>离场位置</b>，以<b>虚线绘制「开仓 → 止盈离场」「开仓 → 止损离场」两条连线</b>（区间内未触发则该条连线不绘制）。止盈区为淡透明红、止损区为淡透明绿（盈红亏绿）。双击斐波画线打开比例设置弹窗，可增删改、选预设、保存为默认；选中后 Delete 删除，拖动端点调整。</li>
+            <li><b>快捷键</b>：<b>B</b> 市价买入 1 手、<b>S</b> 市价卖出 1 手、<b>C</b> 全部平仓、<b>=</b> 播放/暂停、<b>空格</b> 下一根K线，均固定生效（空格只前进不回退，无「上一根」）；工具栏「快捷键」按钮可自定义 播放、下一根、全屏 等按键。</li>
+            <li><b>图表操作</b>：滚轮＝横轴缩放，拖动空白＝平移，<b>右侧价格轴上下拖动＝纵轴缩放</b>（双击复位）。十字光标<b>横向自动吸附</b>到K线中央（最小步进=一根K线宽度，不会落在K线间隙），纵向自由，始终生效无需设置。</li>
+          </ol>
+          <div class="help-foot"><button class="btn" id="btnHelpClose">知道了</button></div>
+        </div>
+
+        <!-- 右键菜单（空白=「限价/突破」两项下单；命中挂单线=仅「撤销此挂单」） -->
+        <div class="ctx-menu" id="ctxMenu" hidden>
+          <button class="cm-item sell" id="cmA" hidden></button>
+          <button class="cm-item buy" id="cmB" hidden></button>
+          <button class="cm-item danger" id="cmC" hidden></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 右侧面板 ============ -->
+    <aside class="side" id="side">
+      <div class="tabs" id="tabs">
+        <button data-tab="pos" class="active">持仓<b id="cntPos">0</b></button>
+        <button data-tab="hist">历史</button>
+        <button data-tab="stats">统计</button>
+      </div>
+
+      <div class="panels">
+
+        <!-- 持仓 -->
+        <div class="panel active" data-panel="pos">
+          <div class="list" id="posList"></div>
+        </div>
+
+        <!-- 历史成交记录（持久化） -->
+        <div class="panel" data-panel="hist">
+          <div class="hist-head">
+            <span class="sec-title" style="margin:0">历史成交记录</span>
+            <button class="mini-btn" id="btnClearHist" title="清空本数据集的全部历史记录">清空</button>
+          </div>
+          <div class="hint" style="margin:0 0 6px">自动保存在本地，重新打开可查看；点击记录查看K线详情与备注。</div>
+          <div class="list" id="histList"></div>
+        </div>
+
+        <!-- 统计 -->
+        <div class="panel" data-panel="stats">
+          <div id="statsBox"></div>
+          <div class="sec-title">权益曲线（已实现）</div>
+          <canvas id="equityCanvas" height="120"></canvas>
+          <div class="sec-title">平仓明细</div>
+          <div class="list" id="tradeList"></div>
+          <div class="kbd-hint" style="margin-top:12px">
+            <div class="kh-title">快捷键</div>
+            <div id="kbdList"></div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- ============ 交易详情弹窗 ============ -->
+<div class="modal-overlay" id="tradeModal" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <b>交易详情</b>
+      <button class="modal-x" id="btnTradeClose" title="关闭">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="t-head" id="tmHead"></div>
+      <canvas id="tradeChart"></canvas>
+      <div class="t-grid" id="tmGrid"></div>
+      <div class="field" style="margin-top:10px">
+        <label>备注</label>
+        <textarea id="tmNote" rows="2" placeholder="为这笔交易写点复盘心得…"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="btnTmJump" title="把回放位置跳到这笔交易平仓处">跳到平仓处</button>
+      <span class="spacer"></span>
+      <button class="btn" id="btnTmCancel">关闭</button>
+      <button class="btn primary" id="btnTmSave">保存备注</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 斐波那契比例设置弹窗 ============ -->
+<div class="modal-overlay" id="fibModal" hidden>
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <b>斐波那契比例</b>
+      <button class="modal-x" id="btnFibClose" title="关闭">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint" style="margin:0 0 8px">编辑当前画线的比例，勾选「保存为默认」后新画线将使用这套比例。</div>
+      <div id="fibLevelList"></div>
+      <button class="btn mini-btn" id="btnFibAdd" style="margin-top:8px">+ 添加比例</button>
+      <div class="fib-presets">
+        <span>预设：</span>
+        <button class="btn mini-btn" data-preset="fib">默认回撤</button>
+        <button class="btn mini-btn" data-preset="fibext">默认扩展</button>
+        <button class="btn mini-btn" data-preset="abcd">纯 AB=CD</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <label class="chk"><input type="checkbox" id="chkFibDefault"> 保存为默认</label>
+      <span class="spacer"></span>
+      <button class="btn" id="btnFibCancel">取消</button>
+      <button class="btn primary" id="btnFibSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 快捷键设置弹窗 ============ -->
+<div class="modal-overlay" id="keyModal" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <b>自定义快捷键</b>
+      <button class="modal-x" id="btnKeyClose" title="关闭">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="hint" style="margin:0 0 8px">点击按键框，然后按下想绑定的键。Delete / Esc 为固定功能不可绑定。</div>
+      <div id="keyRows"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="btnKeyReset">恢复默认</button>
+      <span class="spacer"></span>
+      <button class="btn primary" id="btnKeySave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/drawings.js"></script>
+<script src="js/trading.js"></script>
+<script src="data/btcusdt.js"></script>
+<script src="data/xau.js"></script>
+<script src="data/es500.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
